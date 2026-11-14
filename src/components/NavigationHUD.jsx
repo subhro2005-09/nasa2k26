@@ -78,11 +78,11 @@ function WalkStick({ value, onChange }) {
     <div className="well p-3 flex items-center justify-between gap-3">
       <div className="text-xs text-dust">Stick</div>
       <div className="flex flex-col items-center gap-1">
-        <button className="icon-btn !w-9 !h-9" onPointerDown={() => set(1, 0)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Forward">W</button>
+        <button className="icon-btn w-9! h-9!" onPointerDown={() => set(1, 0)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Forward">W</button>
         <div className="flex gap-1">
-          <button className="icon-btn !w-9 !h-9" onPointerDown={() => set(0, -1)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Turn left">A</button>
-          <button className="icon-btn !w-9 !h-9" onPointerDown={() => set(-0.55, 0)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Back">S</button>
-          <button className="icon-btn !w-9 !h-9" onPointerDown={() => set(0, 1)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Turn right">D</button>
+          <button className="icon-btn w-9! h-9!" onPointerDown={() => set(0, -1)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Turn left">A</button>
+          <button className="icon-btn w-9! h-9!" onPointerDown={() => set(-0.55, 0)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Back">S</button>
+          <button className="icon-btn w-9! h-9!" onPointerDown={() => set(0, 1)} onPointerUp={() => set(0, 0)} onPointerLeave={() => set(0, 0)} aria-label="Turn right">D</button>
         </div>
       </div>
       <div className="num text-xs text-dim w-10">{value.forward ? 'MOV' : 'IDL'}</div>
@@ -148,7 +148,7 @@ export function RouteComparison() {
           const on = m.routeMode === id;
           const s = scored[id.toUpperCase()] || scored[id === 'direct' ? 'DIRECT' : id.toUpperCase()];
           return (
-            <button key={id} type="button" onClick={() => m.setRouteMode(id)} className={`well p-3 text-left ${on ? '!border-dusk/50' : ''}`}>
+            <button key={id} type="button" onClick={() => m.setRouteMode(id)} className={`well p-3 text-left ${on ? 'border-dusk/50!' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-[13px] flex items-center gap-2">
                   <i className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
@@ -228,7 +228,7 @@ export function RouteAlerts() {
             {alt ? alt.text : 'Stay on the marked GPS line. Slow on slope and keep the 45 min return reserve.'}
           </p>
           {alt && (
-            <button type="button" className="btn btn-pri mt-2 !min-h-9" onClick={() => alt.action === 'safe' ? m.setRouteMode('safe') : n.returnToBase()}>
+            <button type="button" className="btn btn-pri mt-2 min-h-9!" onClick={() => alt.action === 'safe' ? m.setRouteMode('safe') : n.returnToBase()}>
               <Icon n={alt.action === 'safe' ? 'shield' : 'home'} s={14} />{alt.label}
             </button>
           )}
@@ -360,7 +360,7 @@ export function RouteMap2D() {
               <circle cx={X(p.lon)} cy={Y(p.lat)} r="5" fill={hot ? '#ff6b6b' : '#e8a53d'} stroke="#fff" strokeWidth="1" />
               <text x={X(p.lon) + 8} y={Y(p.lat) + 3} fontSize="7" fill="#ffb4b4">{p.hazardName}</text>
             </g>
-          );
+          );  
         })}
         <circle cx={X(youLon)} cy={Y(Number(you.lat))} r="4.5" fill="#e4613a" stroke="#fff" strokeWidth="1.5" />
         <text x={X(youLon) + 6} y={Y(Number(you.lat)) - 4} fontSize="8" fill="#f4efe9">YOU</text>
@@ -368,10 +368,10 @@ export function RouteMap2D() {
         <text x={X(destLon) + 6} y={Y(destLat) - 4} fontSize="8" fill="#7fc8cc">{dest?.name || 'DEST'}</text>
       </svg>
       <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-dust">
-        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#6fd6a3]" />Safest</span>
+        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#48e797]" />Safest</span>
         <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#5b9cff]" />Fastest</span>
-        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#c084fc]" />Science</span>
-        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#ff6b6b]" />Hazard</span>
+        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#b776f8]" />Science</span>
+        <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#f55d5d]" />Hazard</span>
       </div>
     </section>
   );
