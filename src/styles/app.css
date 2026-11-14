@@ -114,3 +114,48 @@
   .gps-next { font-size: 13px; }
   .gps-chevron { width: 36px; height: 36px; font-size: 18px; }
 }
+.gps-close {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  border: none;
+  background: transparent;
+  color: #aaa;
+  font-size: 19px;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.gps-close:hover {
+  color: white;
+}
+/* Dismiss controls for the floating GPS HUD cards. */
+.gps-meters,
+.gps-alert {
+  position: relative;
+  padding-right: 34px;
+}
+
+.gps-close {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #aaa;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.gps-close:hover {
+  background: rgb(255 255 255 / .08);
+  color: white;
+}
