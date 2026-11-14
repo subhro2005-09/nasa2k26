@@ -113,7 +113,7 @@ export function GpsHud() {
           )}
           <button
             type="button"
-            className="btn btn-pri !min-h-9 !text-[12px] mt-2"
+            className="btn btn-pri min-h-9! text-[12px]! mt-2"
             onClick={n.acceptReroute}
           >
             <Icon n="route" s={14} />Accept reroute
@@ -136,7 +136,7 @@ export function GpsHud() {
           <p>{alt.text}</p>
           <button
             type="button"
-            className="btn btn-pri !min-h-9 !text-[12px] mt-2"
+            className="btn btn-pri min-h-9! text-[12px]! mt-2"
             onClick={() => {
               if (alt.action === 'safe') m.setRouteMode('safe');
               else n.returnToBase();

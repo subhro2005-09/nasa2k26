@@ -54,7 +54,7 @@ export function ProfileChart({ height = 150 }) {
           <line x1={progress * W} x2={progress * W} y1="0" y2={H} stroke="#f4efe9" stroke-opacity=".55" vector-effect="non-scaling-stroke" />
         </svg>
         {stations.map((s, i) => (
-          <span key={s.id || i} title={`${s.name || 'Station'} · ${(s.km || 0).toFixed(1)} km`} className="absolute bottom-1 -translate-x-1/2 grid place-items-center w-[18px] h-[18px] rounded-full text-[10px] font-bold text-void pointer-events-none" style={{ left: `${(s.t || 0) * 100}%`, background: s.type === 'hab' ? hex.sol : s.type === 'science' ? hex.dusk : '#a9a0ae', marginLeft: (s.t || 0) < 0.02 ? 9 : (s.t || 0) > 0.98 ? -9 : 0 }}>{s.type === 'hab' ? 'H' : s.n}</span>
+          <span key={s.id || i} title={`${s.name || 'Station'} · ${(s.km || 0).toFixed(1)} km`} className="absolute bottom-1 -translate-x-1/2 grid place-items-center w-4.5 h-4.5 rounded-full text-[10px] font-bold text-void pointer-events-none" style={{ left: `${(s.t || 0) * 100}%`, background: s.type === 'hab' ? hex.sol : s.type === 'science' ? hex.dusk : '#a9a0ae', marginLeft: (s.t || 0) < 0.02 ? 9 : (s.t || 0) > 0.98 ? -9 : 0 }}>{s.type === 'hab' ? 'H' : s.n}</span>
         ))}
         {now && <span className="absolute w-3.5 h-3.5 rounded-full bg-bone border-[3px] border-ember -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow-[0_0_0_4px_rgb(228_97_58/.25)]" style={{ left: `${progress * 100}%`, top: `${g.Yv(now)}%` }} />}
         <input type="range" min="0" max="1000" value={Math.round(progress * 1000)} onInput={(e) => setProgress(e.target.value / 1000)} aria-label="Traverse position"
