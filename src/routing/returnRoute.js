@@ -19,17 +19,23 @@ export function generateReturnRoute(from, hab, missionId, hazards = []) {
   return { ...path, metrics: calculateRouteMetrics(path.points) };
 }
 
-export function generateNavRoute(from, dest, missionId, mode, hazards = []) {
+export function generateNavRoute(from, dest, missionId, mode, hazards = [], options = {}) {
   if (!from || !dest) return { points: [], stations: [], metrics: calculateRouteMetrics([]) };
-  const path = generateDensePath([crewStop(from), { id: dest.id || 'dest', name: dest.name, x: dest.x, y: dest.y, type: dest.type || 'waypoint' }], missionId, mode, hazards);
+  const path = generateDensePath(
+    [crewStop(from), { id: dest.id || 'dest', name: dest.name, x: dest.x, y: dest.y, type: dest.type || 'waypoint' }],
+    missionId,
+    mode,
+    hazards,
+    options
+  );
   return { ...path, metrics: calculateRouteMetrics(path.points) };
 }
 
-export function compareNavRoutes(from, dest, missionId, hazards = []) {
+export function compareNavRoutes(from, dest, missionId, hazards = [], options = {}) {
   return {
-    safe: generateNavRoute(from, dest, missionId, 'safe', hazards),
-    direct: generateNavRoute(from, dest, missionId, 'direct', hazards),
-    science: generateNavRoute(from, dest, missionId, 'science', hazards)
+    safe: generateNavRoute(from, dest, missionId, 'safe', hazards, options),
+    direct: generateNavRoute(from, dest, missionId, 'direct', hazards, options),
+    science: generateNavRoute(from, dest, missionId, 'science', hazards, options)
   };
 }
 
