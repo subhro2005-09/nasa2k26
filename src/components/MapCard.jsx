@@ -161,12 +161,12 @@ export const MapCard = memo(function MapCard() {
           <div className="text-xs text-dust truncate hidden sm:block">Click any point to solve three routes — Safest, Fastest, Science — with distance and EVA time.</div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button className={`btn !px-2 ${flat ? 'btn-ghost' : 'btn-pri'}`} onClick={() => setFlat(false)} title="3D globe">3D</button>
-          <button className={`btn !px-2 ${flat ? 'btn-pri' : 'btn-ghost'}`} onClick={() => setFlat(true)} title="2D map">2D</button>
-          <button className="btn btn-ghost !px-2" onClick={() => n.setClickIntent(n.clickIntent === 'relocate' ? 'destination' : 'relocate')} title="Map click intent">
+          <button className={`btn px-2! ${flat ? 'btn-ghost' : 'btn-pri'}`} onClick={() => setFlat(false)} title="3D globe">3D</button>
+          <button className={`btn px-2! ${flat ? 'btn-pri' : 'btn-ghost'}`} onClick={() => setFlat(true)} title="2D map">2D</button>
+          <button className="btn btn-ghost px-2!" onClick={() => n.setClickIntent(n.clickIntent === 'relocate' ? 'destination' : 'relocate')} title="Map click intent">
             <Icon n={n.clickIntent === 'relocate' ? 'user' : 'target'} s={14} /><span className="hidden sm:inline">{n.clickIntent === 'relocate' ? 'Place crew' : 'Set dest'}</span>
           </button>
-          <a className="btn btn-ghost !px-2" href="/mars-atlas.html" target="_blank" rel="noopener" aria-label="Open the atlas full screen"><Icon n="ext" s={14} /><span className="hidden md:inline">Atlas</span></a>
+          <a className="btn btn-ghost px-2!" href="/mars-atlas.html" target="_blank" rel="noopener" aria-label="Open the atlas full screen"><Icon n="ext" s={14} /><span className="hidden md:inline">Atlas</span></a>
         </div>
       </div>
       <div className="relative flex-1 min-h-0 overflow-hidden bg-[#07060a]">
@@ -186,9 +186,9 @@ export const MapCard = memo(function MapCard() {
         )}
         <div className="absolute top-3 left-3 right-3 flex flex-col gap-1.5 pointer-events-none items-start">
           <div className="flex flex-wrap gap-1.5">
-            <span className="tag tag-info pointer-events-auto">{flat ? '2D map' : n.cameraMode === 'astronaut' ? 'Astronaut camera' : 'Orbit camera'}</span>
+            {/* <span className="tag tag-info pointer-events-auto">{flat ? '2D map' : n.cameraMode === 'astronaut' ? 'Astronaut camera' : 'Orbit camera'}</span>
             {n.planetary && <span className="tag tag-caution pointer-events-auto">Orbital traverse</span>}
-            {n.destination?.name && <span className="tag tag-info pointer-events-auto">YOU → {n.destination.name}</span>}
+            {n.destination?.name && <span className="tag tag-info pointer-events-auto">YOU → {n.destination.name}</span>} */}
           </div>
           {topAlert && (
             <div className="pointer-events-auto well p-2.5 max-w-md shadow-2xl">
@@ -197,8 +197,8 @@ export const MapCard = memo(function MapCard() {
             </div>
           )}
           {n.comparisons ? (
-            <div className="pointer-events-auto well !py-1.5 !px-2 flex flex-col gap-1 shadow-2xl max-w-[min(100%,320px)]">
-              {[['safe', 'Safest', '#6fd6a3'], ['direct', 'Fastest', '#5b9cff'], ['science', 'Science', '#c084fc']].map(([id, label, color]) => {
+            <div className="pointer-events-auto well py-1.5! px-2! flex flex-col gap-1 shadow-2xl max-w-[min(100%,320px)]">
+              {[['safe', 'Safest', '#48e797'], ['direct', 'Fastest', '#5b9cff'], ['science', 'Science', '#b776f8']].map(([id, label, color]) => {
                 const r = n.comparisons[id];
                 const km = r?.eva?.remainingM != null ? r.eva.remainingM / 1000 : r?.metrics?.distanceKm;
                 const min = Math.round(r?.eva?.remainingMin ?? r?.metrics?.estimatedTimeMin ?? 0);
@@ -213,10 +213,10 @@ export const MapCard = memo(function MapCard() {
               })}
             </div>
           ) : n.points?.length > 1 && (
-            <div className="pointer-events-auto flex items-center gap-2 text-[11px] text-dust well !py-1.5 !px-2.5">
-              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#6fd6a3]" />Safe</span>
-              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#e8a53d]" />Caution</span>
-              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#ff6b6b]" />Hazard</span>
+            <div className="pointer-events-auto flex items-center gap-2 text-[11px] text-dust well py-1.5! px-2.5">
+              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#48e797]" />Safe</span>
+              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#f0a83a]" />Caution</span>
+              <span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full bg-[#f55d5d]" />Hazard</span>
             </div>
           )}
         </div>
