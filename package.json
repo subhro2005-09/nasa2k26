@@ -1,0 +1,23 @@
+{
+  "name": "ares-martian-map",
+  "private": true,
+  "version": "2.0.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/precompress.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cesium": "^1.147.0",
+    "preact": "^10.26.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.0",
+    "@tailwindcss/vite": "^4.3.4",
+    "tailwindcss": "^4.3.4",
+    "vite": "^6.4.0",
+    "vite-plugin-cesium": "^1.2.23"
+  }
+}

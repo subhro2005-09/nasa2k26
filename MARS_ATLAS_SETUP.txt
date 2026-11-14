@@ -1,0 +1,13 @@
+Mars Atlas map integration
+
+1. Extract this ZIP.
+2. Open a terminal in the Frontend folder.
+3. Run: npm install
+4. Run: npm run dev
+
+The existing React map component now embeds the original Mars Atlas app at /mars-atlas.html.
+The original app source is preserved in mars-atlas-src/. Cesium imagery/terrain are fetched live
+from NASA Mars Trek and the MarsHub terrain endpoint, so internet access is required.
+
+For a production build, run npm run build. vite.config.js includes both index.html and
+mars-atlas.html as build entries so the iframe page is included in dist.

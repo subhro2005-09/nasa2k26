@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mars Atlas — interactive map of the Red Planet</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23c4522c'/%3E%3Ccircle cx='11' cy='12' r='4' fill='%23e4613a' opacity='0.7'/%3E%3C/svg%3E" />
+    <meta
+      name="description"
+      content="Explore the surface of Mars in 3D: real MOLA topography, canyons, volcanoes, craters and every Mars landing site."
+    />
+  </head>
+  <body>
+    <div id="cesium"></div>
+
+    <div id="boot">
+      <div class="boot-inner">
+        <div class="boot-planet"></div>
+        <h1>MARS ATLAS</h1>
+        <p id="boot-msg">Loading topography…</p>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>Mars Atlas</h1>
+          <p>Surface explorer · MOLA topography</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn dock-btn" id="btn-dock" aria-label="Toggle layers panel" title="Layers">
+          <svg viewBox="0 0 24 24"><path d="M12 2 2 7.5 12 13l10-5.5L12 2Zm-10 11 10 5.5L22 13l-1.6-.9L12 16.4 3.6 12.1 2 13Zm0 5.2 10 5.5 10-5.5-1.6-.9L12 21.6 3.6 17.3 2 18.2Z"/></svg>
+        </button>
+        <div class="search" id="search-wrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.55 13.46l4.24 4.25 1.41-1.41-4.25-4.24A7.5 7.5 0 0 0 10.5 3Zm0 2a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Z"/></svg>
+          <input id="search" type="search" placeholder="Search Olympus Mons, Jezero, Valles Marineris…" autocomplete="off" spellcheck="false" aria-label="Search Mars features" />
+          <div class="search-results" id="search-results" hidden></div>
+        </div>
+        <button class="icon-btn" id="btn-mode" title="Switch between 3D globe and flat map">
+          <span class="mode-label">3D</span>
+        </button>
+        <button class="icon-btn" id="btn-about" title="About this atlas" aria-label="About">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.75a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM13.2 17h-2.4v-1.2h.5v-3.6h-.6V11h2.5v4.8h.5Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <aside class="dock" id="dock">
+      <div class="dock-tabs" role="tablist">
+        <button class="tab active" data-tab="explore" role="tab">Explore</button>
+        <button class="tab" data-tab="layers" role="tab">Basemaps</button>
+      </div>
+
+      <section class="panel active" data-panel="explore">
+        <div class="panel-head">
+          <h2>Signature features</h2>
+          <span class="count" id="feature-count"></span>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="feature-list" id="feature-list"></div>
+        <div class="panel-head">
+          <h2>Landing sites</h2>
+          <label class="switch">
+            <input type="checkbox" id="toggle-missions" checked />
+            <span></span>
+          </label>
+        </div>
+        <div class="feature-list compact" id="mission-list"></div>
+      </section>
+
+      <section class="panel" data-panel="layers">
+        <div class="panel-head"><h2>Basemap</h2></div>
+        <div class="basemaps" id="basemaps"></div>
+
+        <div class="panel-head"><h2>Overlays</h2></div>
+        <label class="row-toggle">
+          <span>IAU nomenclature <em id="nom-count"></em></span>
+          <input type="checkbox" id="toggle-nomenclature" />
+        </label>
+        <label class="row-toggle">
+          <span>Graticule (10° grid)</span>
+          <input type="checkbox" id="toggle-grid" />
+        </label>
+        <label class="row-toggle">
+          <span>Landing sites</span>
+          <input type="checkbox" id="toggle-missions-2" checked />
+        </label>
+        <label class="row-toggle">
+          <span>Feature labels</span>
+          <input type="checkbox" id="toggle-labels" checked />
+        </label>
+
+        <div class="panel-head"><h2>Lighting</h2></div>
+        <label class="row-toggle">
+          <span>Atmospheric effects</span>
+          <input type="checkbox" id="toggle-atmosphere" checked />
+        </label>
+        <label class="row-toggle">
+          <span>Solar flare</span>
+          <input type="checkbox" id="toggle-flare" checked />
+        </label>
+        <label class="row-toggle">
+          <span>Solar wind</span>
+          <input type="checkbox" id="toggle-solar-wind" />
+        </label>
+
+        <div class="panel-head"><h2>Terrain</h2></div>
+        <div class="slider-row">
+          <label for="exaggeration">Vertical exaggeration</label>
+          <output id="exaggeration-out">1.0×</output>
+          <input type="range" id="exaggeration" min="0.5" max="3" step="0.1" value="1" />
+        </div>
+        <label class="row-toggle">
+          <span>Real elevation data</span>
+          <input type="checkbox" id="toggle-terrain" checked />
+        </label>
+
+        <div class="intro-block">
+          <h3>About the data</h3>
+          <p>
+            Imagery: NASA/JPL/USGS Viking MDIM 2.1 and MOLA colourised shaded relief, served
+            through NASA's Mars Trek WMTS. Elevation: MOLA/HRSC blended DEM. Names: IAU
+            planetary nomenclature. Atmosphere, solar flare and solar wind are procedural
+            lighting effects for the globe, not scientific solar observations.
+          </p>
+        </div>
+      </section>
+    </aside>
+
+    <section class="info-card" id="info-card" hidden>
+      <button class="close" id="info-close" aria-label="Close">×</button>
+      <div class="info-eyebrow" id="info-type">Volcano</div>
+      <h2 id="info-name">Feature</h2>
+      <div class="info-stats" id="info-stats"></div>
+      <p class="info-desc" id="info-desc"></p>
+      <div class="info-foot">
+        <button class="ghost-btn" id="info-fly">Fly there</button>
+        <a class="ghost-btn" id="info-link" target="_blank" rel="noreferrer">Gazetteer ↗</a>
+      </div>
+    </section>
+
+    <div class="hud-bottom">
+      <div class="hud-block mono" id="readout">
+        <span class="hud-label">Cursor</span>
+        <span id="readout-coords">—</span>
+        <span class="hud-sep"></span>
+        <span id="readout-elev">—</span>
+      </div>
+      <div class="hud-block" id="scale-block">
+        <div class="scalebar"><div class="scalebar-fill" id="scalebar-fill"></div></div>
+        <span class="mono" id="scalebar-label">—</span>
+      </div>
+      <div class="hud-actions">
+        <button class="pill-btn" id="btn-measure">
+          <svg viewBox="0 0 24 24"><path d="M3.3 17.3 17.3 3.3l3.4 3.4L6.7 20.7Zm4-3.4 1.4 1.4 1.6-1.6-1.4-1.4Zm3.2-3.2L12 12l1.6-1.6L12.2 9Zm3.2-3.2 1.4 1.4 1.6-1.6-1.4-1.4Z"/></svg>
+          Measure
+        </button>
+        <button class="pill-btn" id="btn-reset">
+          <svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-4.9 6h-2A7 7 0 1 0 12 5Z"/></svg>
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <aside id="ares-alert" class="ares-alert" hidden role="alert">
+      <div class="ares-alert-kicker">Route alert</div>
+      <div class="ares-alert-title"></div>
+      <p class="ares-alert-body"></p>
+      <button type="button" id="ares-alert-dismiss">Dismiss</button>
+    </aside>
+
+    <div class="fx-bar" id="fx-bar" role="group" aria-label="Globe lighting">
+      <label class="row-toggle">
+        <span>Atmosphere</span>
+        <input type="checkbox" id="toggle-atmosphere-hud" checked />
+      </label>
+      <label class="row-toggle">
+        <span>Solar flare</span>
+        <input type="checkbox" id="toggle-flare-hud" checked />
+      </label>
+      <label class="row-toggle">
+        <span>Solar wind</span>
+        <input type="checkbox" id="toggle-solar-wind-hud" />
+      </label>
+    </div>
+
+    <div class="measure-panel" id="measure-panel" hidden>
+      <div class="mp-head">
+        <strong>Distance</strong>
+        <button class="close small" id="measure-close" aria-label="Close">×</button>
+      </div>
+      <p class="mp-hint">Click on the surface to drop points. Distances are geodesic on the Mars ellipsoid.</p>
+      <div class="mp-total mono" id="measure-total">0.0 km</div>
+      <ol class="mp-list" id="measure-list"></ol>
+      <button class="ghost-btn" id="measure-clear">Clear points</button>
+    </div>
+
+    <dialog id="about">
+      <button class="close" id="about-close" aria-label="Close">×</button>
+      <h2>Mars Atlas</h2>
+      <p>
+        An interactive map of the Martian surface built on NASA open planetary data. Drag to
+        rotate the globe, scroll to zoom, right-drag to tilt. Every named feature comes from the
+        IAU Gazetteer of Planetary Nomenclature; elevations are sampled live from the MOLA/HRSC
+        blended digital elevation model.
+      </p>
+      <ul>
+        <li><strong>3D / 2D</strong> — switch between a globe and an equirectangular map.</li>
+        <li><strong>Basemaps</strong> — natural-colour Viking mosaic or colourised topography.</li>
+        <li><strong>Measure</strong> — click points for geodesic distances.</li>
+        <li><strong>Terrain</strong> — real elevation, exaggeration up to 3×.</li>
+        <li><strong>Lighting</strong> — cinematic atmosphere, solar flare and optional solar wind. These are procedural visuals, not observatory data.</li>
+      </ul>
+      <p class="fine">
+        Imagery and elevation © NASA / JPL-Caltech / USGS / ESA. Nomenclature © IAU WGCCRE.
+        Data served live from NASA Mars Trek. Built with CesiumJS. Solar effects are
+        visualisations aligned to Cesium’s Sun direction, not measured solar imagery.
+      </p>
+    </dialog>
+
+    <script type="module" src="/mars-atlas-src/main.js"></script>
+  </body>
+</html>
