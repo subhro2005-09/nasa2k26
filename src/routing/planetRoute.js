@@ -50,107 +50,205 @@ function sampleGeodesic(from, to, n = 96) {
 const SEVERE = new Set(['volcano', 'canyon', 'chaos']);
 const SCIENCE = new Set(['canyon', 'chaos', 'crater', 'basin']);
 
+function nearbyFeatures(pt, maxKm = 250) {
+  const out = [];
+  for (const f of HIGHLIGHTS) {
+    const d = haversineKm(pt, f);
+    const r = Math.max(25, (f.diameter || 60) * 0.45);
+    if (d <= Math.max(r, maxKm)) out.push({ ...f, distKm: d, radiusKm: r });
+  }
+  return out;
+}
+
 function nearestFeature(pt, cats) {
   let best = null, bestD = Infinity;
   for (const f of HIGHLIGHTS) {
     if (cats && !cats.has(f.category)) continue;
     const d = haversineKm(pt, f);
-    const r = Math.max(40, (f.diameter || 80) * 0.45);
+    const r = Math.max(30, (f.diameter || 70) * 0.45);
     if (d < r && d < bestD) { best = { ...f, distKm: d, radiusKm: r }; bestD = d; }
   }
   return best;
 }
 
-function featureCost(pt, mode) {
-  const severe = nearestFeature(pt, SEVERE);
-  const any = nearestFeature(pt);
-  let c = 1;
-  if (severe) {
-    const t = severe.distKm / Math.max(1, severe.radiusKm);
-    if (t < 0.55) c += mode === 'direct' ? 18 : 80;
-    else if (t < 1) c += mode === 'direct' ? 4 : 22;
-  }
-  if (any && SCIENCE.has(any.category) && mode === 'science') c *= 0.45;
-  return c;
+/** Deterministic planetary relief so terrain is not flat outside named HIGHLIGHTS. */
+function proceduralReliefM(pt) {
+  const a = Math.sin(rad(pt.lat) * 14) * Math.cos(rad(pt.lon) * 14);
+  const b = Math.sin(rad(pt.lat + pt.lon) * 29);
+  return a * 320 + b * 140;
 }
 
-/** Corridor A* so planetary routes bend around volcanoes/chasma instead of a geodesic. */
-function corridorAStar(from, dest, mode) {
-  const along = 32;
-  const offs = mode === 'direct'
-    ? [-0.4, -0.18, 0, 0.18, 0.4]
-    : mode === 'science'
-      ? [-0.85, -0.45, 0, 0.45, 0.85]
-      : [-1.25, -0.85, -0.45, 0, 0.45, 0.85, 1.25];
+function elevationGuess(pt, startElev, dest) {
+  const base = (startElev || -2500) + proceduralReliefM(pt);
+  const f = nearestFeature(pt);
+  if (f?.category === 'volcano') return Math.round(base + 8000 * Math.exp(-((f.distKm / f.radiusKm) ** 2)));
+  if (f?.category === 'canyon') return Math.round(base - 4000 * Math.exp(-((f.distKm / f.radiusKm) ** 2)));
+  if (f?.category === 'crater' || f?.category === 'basin') {
+    const rim = Math.exp(-(((f.distKm - f.radiusKm * 0.85) / (f.radiusKm * 0.25)) ** 2));
+    return Math.round(base - 1200 * Math.exp(-((f.distKm / f.radiusKm) ** 2)) + 650 * rim);
+  }
+  if (f?.category === 'polar') return Math.round(base + 1200);
+  const t = dest && haversineKm(pt, dest) < 1 ? 1 : 0;
+  return Math.round(base * (1 - t * 0.05));
+}
+
+function featureCost(pt, mode, hazards = [], scienceTargets = [], elevAtPt = null, prevElev = null, stepKm = 1) {
+  const severe = nearestFeature(pt, SEVERE);
+  const any = nearestFeature(pt);
+  let cost = 1.0;
+
+  // Slope / relief penalty: Safest strongly avoids grade changes; Fastest prioritizes distance.
+  if (elevAtPt != null && prevElev != null && stepKm > 0.05) {
+    const grade = Math.abs(elevAtPt - prevElev) / (stepKm * 1000);
+    if (mode === 'safe') cost += (grade * 18) ** 2;
+    else if (mode === 'science') cost += (grade * 8) ** 2;
+    else cost += (grade * 3) ** 2;
+  }
+
+  // Severe geological hazards (volcanoes, canyons, chaos terrain)
+  if (severe) {
+    const t = severe.distKm / Math.max(1, severe.radiusKm);
+    if (mode === 'direct') {
+      if (t < 0.45) cost += 12;
+      else if (t < 0.85) cost += 2.5;
+    } else if (mode === 'safe') {
+      if (t < 1.25) cost += 140 * Math.max(0.15, 1.25 - t);
+    } else {
+      if (t < 0.5) cost += 90;
+      else if (t < 1.1) cost *= 0.65;
+    }
+  }
+
+  // Moderate feature roughness (craters, basins, ridges)
+  if (any && !severe) {
+    if (mode === 'safe') cost += 1.8;
+    else if (mode === 'science' && SCIENCE.has(any.category)) cost *= 0.45;
+  }
+
+  // Active / reported hazards
+  for (const h of hazards) {
+    if (!Number.isFinite(h.lat) || !Number.isFinite(h.lon)) continue;
+    const d = haversineKm(pt, h);
+    const radius = Math.max(0.25, (h.radiusKm || 0.5) * (mode === 'safe' ? 1.6 : 1.0));
+    const clearance = d / radius;
+    if (clearance < 1) {
+      const severity = Math.max(1, Math.min(5, Number(h.severity) || 3));
+      cost += (mode === 'direct' ? 18 : 120) * severity * (1 - clearance) ** 2;
+    }
+  }
+
+  // Science attraction field: curves Science routes toward targets and mapped science features
+  if (mode === 'science') {
+    let bestPull = 0;
+    for (const target of scienceTargets) {
+      if (!Number.isFinite(target.lat) || !Number.isFinite(target.lon)) continue;
+      const d = haversineKm(pt, target);
+      const influenceKm = Math.max(12, target.influenceKm || 60);
+      if (d < influenceKm) bestPull = Math.max(bestPull, 0.65 * (1 - d / influenceKm));
+    }
+    for (const feat of nearbyFeatures(pt, 180)) {
+      if (!SCIENCE.has(feat.category)) continue;
+      const influenceKm = Math.max(40, feat.radiusKm * 2.2);
+      if (feat.distKm < influenceKm) {
+        bestPull = Math.max(bestPull, 0.58 * (1 - feat.distKm / influenceKm));
+      }
+    }
+    cost *= 1 - bestPull;
+  }
+
+  return Math.max(0.12, cost);
+}
+
+/** Corridor A* so planetary routes diverge across Fastest, Safest, and Science modes. */
+function corridorAStar(from, dest, mode, hazards = [], scienceTargets = [], startElev = -2500) {
   const total = Math.max(1, haversineKm(from, dest));
-  const widthKm = mode === 'direct'
-    ? Math.min(90, total * 0.07 + 14)
+  const along = Math.min(64, Math.max(24, Math.round(total / 8)));
+
+  const offs = mode === 'direct'
+    ? [-0.3, -0.15, 0, 0.15, 0.3]
     : mode === 'science'
-      ? Math.min(200, total * 0.16 + 28)
-      : Math.min(320, total * 0.26 + 48);
+      ? [-1.0, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1.0]
+      : [-1.2, -0.9, -0.6, -0.35, -0.15, 0, 0.15, 0.35, 0.6, 0.9, 1.2];
+
+  const widthKm = mode === 'direct'
+    ? Math.min(60, total * 0.05 + 6)
+    : mode === 'science'
+      ? Math.min(240, total * 0.22 + 18)
+      : Math.min(300, total * 0.25 + 22);
+
   const brg = bearingDeg(from, dest);
   const cols = offs.length, rows = along + 1;
+  const midCol = (cols / 2) | 0;
+
   const node = (i, j) => {
+    if (i === 0 && j === midCol) return from;
+    if (i === along && j === midCol) return dest;
     const t = i / along;
     const base = interpolate(from, dest, t);
-    return offsetKm(base, brg + 90, offs[j] * widthKm);
+    const taper = Math.sin(Math.PI * t);
+    return offsetKm(base, brg + 90, offs[j] * widthKm * Math.max(0.25, taper));
   };
-  const g = new Float32Array(rows * cols).fill(Infinity);
+
+  const coords = Array.from({ length: rows * cols }, (_, idx) => {
+    const i = (idx / cols) | 0, j = idx % cols;
+    const pt = node(i, j);
+    return { ...pt, elev: elevationGuess(pt, startElev, dest) };
+  });
+
+  const g = new Float64Array(rows * cols).fill(Infinity);
   const fromIdx = new Int32Array(rows * cols).fill(-1);
-  const start = 0 * cols + ((cols / 2) | 0);
-  const goal = along * cols + ((cols / 2) | 0);
+  const start = 0 * cols + midCol;
+  const goal = along * cols + midCol;
   g[start] = 0;
-  const heap = [[start, 0]];
-  const pop = () => {
-    let b = 0;
-    for (let i = 1; i < heap.length; i++) if (heap[i][1] < heap[b][1]) b = i;
-    return heap.splice(b, 1)[0][0];
-  };
-  while (heap.length) {
-    const n = pop();
+
+  const hScale = mode === 'science' ? 0.12 : 1.0;
+  const open = [[start, haversineKm(from, dest) * hScale]];
+
+  while (open.length) {
+    let best = 0;
+    for (let k = 1; k < open.length; k++) if (open[k][1] < open[best][1]) best = k;
+    const [n, fScore] = open.splice(best, 1)[0];
     if (n === goal) break;
+    if (fScore - haversineKm(coords[n], dest) * hScale > g[n] + 1e-6) continue;
+
     const i = (n / cols) | 0, j = n % cols;
-    const p = i === 0 && j === ((cols / 2) | 0) ? from : node(i, j);
-    for (let di = 0; di <= 1; di++)
-      for (let dj = -1; dj <= 1; dj++) {
-        if (!di && !dj) continue;
-        const i2 = i + di, j2 = j + dj;
-        if (i2 < 0 || i2 >= rows || j2 < 0 || j2 >= cols) continue;
-        const m = i2 * cols + j2;
-        const q = i2 === along && j2 === ((cols / 2) | 0) ? dest : node(i2, j2);
-        const step = Math.max(0.2, haversineKm(p, q));
-        const cost = g[n] + step * ((featureCost(p, mode) + featureCost(q, mode)) / 2);
-        if (cost < g[m]) {
-          g[m] = cost;
-          fromIdx[m] = n;
-          heap.push([m, cost + haversineKm(q, dest)]);
-        }
+    const p = coords[n];
+
+    for (let dj = -2; dj <= 2; dj++) {
+      const i2 = i + 1, j2 = j + dj;
+      if (i2 >= rows || j2 < 0 || j2 >= cols) continue;
+      const m = i2 * cols + j2;
+      const q = coords[m];
+      const step = Math.max(0.1, haversineKm(p, q));
+      const cP = featureCost(p, mode, hazards, scienceTargets, p.elev, null, step);
+      const cQ = featureCost(q, mode, hazards, scienceTargets, q.elev, p.elev, step);
+      const tentative = g[n] + step * ((cP + cQ) / 2);
+
+      if (tentative < g[m]) {
+        g[m] = tentative;
+        fromIdx[m] = n;
+        open.push([m, tentative + haversineKm(q, dest) * hScale]);
       }
+    }
   }
+
   const cells = [];
   for (let n = goal; n !== -1; n = fromIdx[n]) {
-    const i = (n / cols) | 0, j = n % cols;
-    cells.push(i === 0 && j === ((cols / 2) | 0) ? from : i === along && j === ((cols / 2) | 0) ? dest : node(i, j));
+    cells.push(coords[n]);
     if (n === start) break;
   }
   cells.reverse();
   if (cells.length < 2) return [from, dest];
+
   const dense = [];
-  for (let i = 0; i < cells.length - 1; i++) dense.push(...sampleGeodesic(cells[i], cells[i + 1], 8).slice(i ? 1 : 0));
+  for (let i = 0; i < cells.length - 1; i++) {
+    dense.push(...sampleGeodesic(cells[i], cells[i + 1], 6).slice(i ? 1 : 0));
+  }
   return dense;
 }
 
-function waypointsForMode(from, dest, mode) {
-  return corridorAStar(from, dest, mode);
-}
-
-function elevationGuess(pt, startElev, dest) {
-  const f = nearestFeature(pt);
-  if (f?.category === 'volcano') return Math.round((startElev || -2000) + 8000 * Math.exp(-((f.distKm / f.radiusKm) ** 2)));
-  if (f?.category === 'canyon') return Math.round((startElev || -2000) - 4000 * Math.exp(-((f.distKm / f.radiusKm) ** 2)));
-  if (f?.category === 'polar') return Math.round((startElev || -2000) + 1200);
-  const t = dest && haversineKm(pt, dest) < 1 ? 1 : 0;
-  return Math.round((startElev || -2500) * (1 - t * 0.1));
+function waypointsForMode(from, dest, mode, hazards, scienceTargets, startElev) {
+  return corridorAStar(from, dest, mode, hazards, scienceTargets, startElev);
 }
 
 function slopeGuess(a, b) {
@@ -166,14 +264,16 @@ function bandOf(p) {
 }
 
 /** Terrain-weighted corridor A* on the Mars ellipsoid. */
-export function generatePlanetRoute(from, dest, mode = 'safe', startElev = -2500) {
+export function generatePlanetRoute(from, dest, mode = 'safe', startElev = -2500, options = {}) {
   const origin = { lat: from.lat, lon: from.lon, name: 'You' };
   const end = { lat: dest.lat, lon: dest.lon, name: dest.name };
-  const raw = waypointsForMode(origin, end, mode);
+  const hazards = Array.isArray(options.hazards) ? options.hazards : [];
+  const scienceTargets = Array.isArray(options.scienceTargets) ? options.scienceTargets : [];
+  const raw = waypointsForMode(origin, end, mode, hazards, scienceTargets, startElev);
 
   let cumM = 0;
   const points = raw.map((p, i) => {
-    const elevation = elevationGuess(p, startElev, end);
+    const elevation = p.elev ?? elevationGuess(p, startElev, end);
     const prev = raw[i - 1];
     const stepKm = prev ? haversineKm(prev, p) : 0;
     cumM += stepKm * 1000;
@@ -204,7 +304,12 @@ export function generatePlanetRoute(from, dest, mode = 'safe', startElev = -2500
   const metrics = calculateRouteMetrics(points);
   metrics.distanceKm = +((points[points.length - 1]?.d || 0) * METERS_PER_PIXEL / 1000).toFixed(1);
   if (!metrics.distanceKm) metrics.distanceKm = +km.toFixed(1);
-  const roverKmh = metrics.distanceKm > EVA_RANGE_KM ? 35 : Math.max(1.2, 3.2 - (metrics.avgSlope || 0) * 0.12);
+
+  const previewSpeedKmh = { safe: 28, direct: 35, science: 24 }[mode] || 28;
+  const slopePenalty = Math.max(0, Math.min(0.35, (metrics.avgSlope || 0) * 0.012));
+  const roverKmh = metrics.distanceKm > EVA_RANGE_KM
+    ? previewSpeedKmh * (1 - slopePenalty)
+    : Math.max(1.2, 3.2 - (metrics.avgSlope || 0) * 0.12);
   const min = Math.round((metrics.distanceKm / roverKmh) * 60);
   metrics.estimatedTimeMin = min;
   metrics.estimatedTimeFormatted = min > 5999 ? `${Math.round(min / 1440)} sols` : `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`;
