@@ -1,5 +1,5 @@
-import { canvasToMarsCoords } from '../services/coordinates.js';
-import { interpolate } from './planetRoute.js';
+import { canvasToMarsCoords, METERS_PER_PIXEL } from '../services/coordinates.js';
+import { interpolate, haversineKm } from './planetRoute.js';
 
 export function inTacticalCanvas(x, y, pad = 8) {
   return Number.isFinite(x) && Number.isFinite(y) && x >= -pad && y >= -pad && x <= 800 + pad && y <= 600 + pad;
@@ -50,6 +50,22 @@ export function finalizeRoute(mission, route, origin, dest) {
   if (!route) return route;
   const stamped = stampPathGeo(mission, route.points || []);
   const points = pinRouteEnds(stamped, origin, dest);
+
+  if (points.length > 1) {
+    let cumD = 0;
+    points[0].d = 0;
+    for (let i = 1; i < points.length; i++) {
+      if (route.planetary && points[i - 1].lat != null && points[i].lat != null) {
+        cumD += (haversineKm(points[i - 1], points[i]) * 1000) / METERS_PER_PIXEL;
+      } else {
+        cumD += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+      }
+      points[i].d = cumD;
+    }
+    const totalD = points[points.length - 1].d || 1;
+    points.forEach((p) => { p.t = p.d / totalD; });
+  }
+
   return { ...route, points };
 }
 
